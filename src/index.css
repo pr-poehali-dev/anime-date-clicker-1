@@ -4,89 +4,42 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 270 30% 8%;
+    --foreground: 300 20% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 270 25% 12%;
+    --card-foreground: 300 20% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 270 25% 12%;
+    --popover-foreground: 300 20% 95%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 320 85% 65%;
+    --primary-foreground: 270 30% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 260 60% 55%;
+    --secondary-foreground: 300 20% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 270 20% 18%;
+    --muted-foreground: 270 15% 60%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 180 80% 55%;
+    --accent-foreground: 270 30% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 300 20% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 270 20% 22%;
+    --input: 270 20% 18%;
+    --ring: 320 85% 65%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Anime colors */
+    --sakura: #ff6eb4;
+    --violet: #9b59d4;
+    --cyan: #00e5ff;
+    --gold: #ffd700;
+    --mint: #00ffcc;
   }
 }
 
@@ -97,5 +50,306 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: "Nunito", sans-serif;
+    overflow-x: hidden;
   }
+}
+
+/* Animated gradient bg */
+.anime-bg {
+  background: linear-gradient(
+    135deg,
+    #0d0620 0%,
+    #1a0835 30%,
+    #0a1628 60%,
+    #0d0a1f 100%
+  );
+  position: relative;
+}
+
+.anime-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 60% 40% at 20% 20%,
+      rgba(255, 110, 180, 0.12) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 50% 50% at 80% 80%,
+      rgba(0, 229, 255, 0.1) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 40% 40% at 60% 10%,
+      rgba(155, 89, 212, 0.1) 0%,
+      transparent 60%
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Sakura particles */
+@keyframes sakura-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) translateX(80px);
+    opacity: 0;
+  }
+}
+
+.sakura {
+  position: fixed;
+  pointer-events: none;
+  font-size: 16px;
+  animation: sakura-fall linear infinite;
+  z-index: 1;
+}
+
+/* Glow effects */
+.glow-pink {
+  box-shadow:
+    0 0 20px rgba(255, 110, 180, 0.4),
+    0 0 60px rgba(255, 110, 180, 0.15);
+}
+.glow-cyan {
+  box-shadow:
+    0 0 20px rgba(0, 229, 255, 0.4),
+    0 0 60px rgba(0, 229, 255, 0.15);
+}
+.glow-violet {
+  box-shadow:
+    0 0 20px rgba(155, 89, 212, 0.4),
+    0 0 60px rgba(155, 89, 212, 0.15);
+}
+
+/* Gradient text */
+.gradient-text-pink {
+  background: linear-gradient(135deg, #ff6eb4, #ff9cee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-cyan {
+  background: linear-gradient(135deg, #00e5ff, #00ffcc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-gold {
+  background: linear-gradient(135deg, #ffd700, #ffaa00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Cards */
+.anime-card {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 110, 180, 0.15);
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+.anime-card:hover {
+  border-color: rgba(255, 110, 180, 0.4);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(255, 110, 180, 0.15);
+}
+
+/* Nav items */
+.nav-item {
+  position: relative;
+  transition: all 0.3s ease;
+}
+.nav-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sakura);
+  box-shadow: 0 0 8px var(--sakura);
+}
+
+/* Progress bar */
+.progress-bar {
+  background: linear-gradient(90deg, #ff6eb4, #9b59d4, #00e5ff);
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Button */
+.btn-anime {
+  background: linear-gradient(135deg, #ff6eb4 0%, #9b59d4 100%);
+  border-radius: 14px;
+  font-weight: 800;
+  font-family: "Nunito", sans-serif;
+  color: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(255, 110, 180, 0.3);
+}
+.btn-anime:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(255, 110, 180, 0.5);
+}
+.btn-anime:active {
+  transform: scale(0.98);
+}
+
+.btn-cyan {
+  background: linear-gradient(135deg, #00e5ff 0%, #00ffcc 100%);
+  color: #0d0620;
+  border-radius: 14px;
+  font-weight: 800;
+  font-family: "Nunito", sans-serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
+}
+.btn-cyan:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 229, 255, 0.5);
+}
+
+/* Badge */
+.badge-anime {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 110, 180, 0.2),
+    rgba(155, 89, 212, 0.2)
+  );
+  border: 1px solid rgba(255, 110, 180, 0.3);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(2deg);
+  }
+}
+.float-anim {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Pulse dot */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.4);
+  }
+}
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Slide up */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.slide-up-1 {
+  animation-delay: 0.05s;
+}
+.slide-up-2 {
+  animation-delay: 0.1s;
+}
+.slide-up-3 {
+  animation-delay: 0.15s;
+}
+.slide-up-4 {
+  animation-delay: 0.2s;
+}
+.slide-up-5 {
+  animation-delay: 0.25s;
+}
+
+/* Star shine */
+@keyframes star-shine {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+.star-shine {
+  animation: star-shine 2s ease-in-out infinite;
+}
+
+/* Wavy divider */
+.wavy-top {
+  position: relative;
+}
+.wavy-top::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: inherit;
+  clip-path: ellipse(55% 100% at 50% 100%);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 110, 180, 0.3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 110, 180, 0.6);
+}
+
+/* Diagonal stripe */
+.stripe-bg {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 110, 180, 0.03),
+    rgba(255, 110, 180, 0.03) 1px,
+    transparent 1px,
+    transparent 20px
+  );
 }
