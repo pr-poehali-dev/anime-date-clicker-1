@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
-const HERO_IMG = 'https://cdn.poehali.dev/projects/fa02b305-cd43-45b0-8919-63c1c7e955ae/files/587a0657-d135-478c-946c-5bf13778ef00.jpg';
+const CHAR_IMG = 'https://cdn.poehali.dev/projects/fa02b305-cd43-45b0-8919-63c1c7e955ae/files/38c76cd9-73f6-4bc0-a53b-afc8e6663f26.jpg';
+const CHAR_IMG2 = 'https://cdn.poehali.dev/projects/fa02b305-cd43-45b0-8919-63c1c7e955ae/files/587a0657-d135-478c-946c-5bf13778ef00.jpg';
 const MARKET_IMG = 'https://cdn.poehali.dev/projects/fa02b305-cd43-45b0-8919-63c1c7e955ae/files/6c80952d-659b-4304-906f-8eda6d6c5a7c.jpg';
 const TOYS_IMG = 'https://cdn.poehali.dev/projects/fa02b305-cd43-45b0-8919-63c1c7e955ae/files/8d2a5d86-ff86-4d77-94e7-cd34516b454e.jpg';
 
@@ -9,36 +10,37 @@ type Tab = 'home' | 'market' | 'toys' | 'gallery' | 'quests' | 'settings';
 interface GameState {
   coins: number;
   gems: number;
+  stars: number;
   level: number;
   xp: number;
   xpMax: number;
   username: string;
-  avatar: string;
+  energy: number;
+  energyMax: number;
   unlockedToys: number[];
   completedQuests: number[];
   settings: { notifications: boolean; sound: boolean; music: boolean; tgSync: boolean };
 }
 
 const defaultState: GameState = {
-  coins: 1250,
-  gems: 34,
-  level: 7,
-  xp: 680,
-  xpMax: 1000,
-  username: 'Sakura-chan',
-  avatar: '🌸',
-  unlockedToys: [1, 2, 3],
+  coins: 3.00,
+  gems: 664,
+  stars: 15,
+  level: 1,
+  xp: 0,
+  xpMax: 100,
+  username: 'sxzxtsv',
+  energy: 17,
+  energyMax: 30,
+  unlockedToys: [1, 2],
   completedQuests: [1],
   settings: { notifications: true, sound: true, music: true, tgSync: false },
 };
 
-const SAKURA_PETALS = Array.from({ length: 10 }, (_, i) => ({
-  id: i,
-  left: `${(i * 10 + 5)}%`,
-  delay: `${(i * 0.8).toFixed(1)}s`,
-  duration: `${7 + (i % 4)}s`,
-  emoji: ['🌸', '🌺', '✨', '⭐', '💫'][i % 5],
-}));
+const CHARACTERS = [
+  { id: 1, name: 'ЗАНЯТА С ДРУГОЙ УТКОЙ', subname: 'НЕ БЕСПОКОИТЬ', rarity: 'COMMON', level: 1, img: CHAR_IMG, hearts: 3, maxHearts: 5, energy: 17 },
+  { id: 2, name: 'САКУРА-ЧАН', subname: 'СВОБОДНА', rarity: 'RARE', level: 3, img: CHAR_IMG2, hearts: 5, maxHearts: 5, energy: 22 },
+];
 
 const MARKET_ITEMS = [
   { id: 1, name: 'Зелье силы', emoji: '⚗️', price: 120, gem: false, rarity: 'common', desc: 'Удваивает очки за 1 час' },
@@ -76,12 +78,24 @@ const GALLERY = [
   { id: 6, emoji: '🌺', title: 'Красный мак', likes: 9 },
 ];
 
-const RARITY: Record<string, string> = {
-  common: 'text-gray-400 border-gray-500/30',
-  rare: 'text-cyan-300 border-cyan-400/30',
-  epic: 'text-purple-300 border-purple-400/30',
-  legendary: 'text-yellow-300 border-yellow-400/30',
+const RARITY_COLOR: Record<string, { text: string; border: string; bg: string }> = {
+  common: { text: '#9CA3AF', border: 'rgba(156,163,175,0.3)', bg: 'rgba(156,163,175,0.08)' },
+  rare: { text: '#67E8F9', border: 'rgba(103,232,249,0.3)', bg: 'rgba(103,232,249,0.08)' },
+  epic: { text: '#C084FC', border: 'rgba(192,132,252,0.3)', bg: 'rgba(192,132,252,0.08)' },
+  legendary: { text: '#FDE047', border: 'rgba(253,224,71,0.3)', bg: 'rgba(253,224,71,0.08)' },
 };
+
+function useTimer(initialSeconds: number) {
+  const [seconds, setSeconds] = useState(initialSeconds);
+  useEffect(() => {
+    const t = setInterval(() => setSeconds(s => s > 0 ? s - 1 : 0), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${h}:${m}:${s}`;
+}
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('home');
@@ -93,6 +107,8 @@ export default function App() {
   });
   const [notification, setNotification] = useState<string | null>(null);
   const [likedItems, setLikedItems] = useState<number[]>([]);
+  const [charIdx, setCharIdx] = useState(0);
+  const touchStartX = useRef(0);
 
   const save = useCallback((s: GameState) => {
     localStorage.setItem('animeworld_save', JSON.stringify(s));
@@ -144,341 +160,417 @@ export default function App() {
     setState(s => ({ ...s, settings: { ...s.settings, [key]: val } }));
   };
 
-  const NAV: { id: Tab; emoji: string; label: string }[] = [
-    { id: 'home', emoji: '🏠', label: 'Главная' },
-    { id: 'market', emoji: '🛒', label: 'Рынок' },
-    { id: 'toys', emoji: '🧸', label: 'Игрушки' },
-    { id: 'gallery', emoji: '🖼️', label: 'Галерея' },
-    { id: 'quests', emoji: '⚔️', label: 'Задания' },
-    { id: 'settings', emoji: '⚙️', label: 'Настройки' },
+  const NAV = [
+    { id: 'market' as Tab, icon: '📈', label: 'РЫНОК' },
+    { id: 'gallery' as Tab, icon: '🖼️', label: 'ГАЛЕРЕЯ' },
+    { id: 'home' as Tab, icon: '🌸', label: 'ГЛАВНАЯ', center: true },
+    { id: 'quests' as Tab, icon: '👤', label: 'ЗАДАНИЯ' },
+    { id: 'settings' as Tab, icon: '✅', label: 'ЕЩЕЩЁ' },
   ];
 
-  const xpPct = Math.round((state.xp / state.xpMax) * 100);
-
   return (
-    <div className="anime-bg min-h-screen font-nunito relative">
-      {SAKURA_PETALS.map(p => (
-        <span key={p.id} className="sakura" style={{ left: p.left, animationDelay: p.delay, animationDuration: p.duration }}>
-          {p.emoji}
-        </span>
-      ))}
-
+    <div style={{ background: '#0e0a1a', minHeight: '100vh', fontFamily: 'Nunito, sans-serif', position: 'relative', overflowX: 'hidden' }}>
       {notification && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 anime-card px-5 py-3 text-sm font-bold whitespace-nowrap glow-pink" style={{ animation: 'slide-up 0.3s ease' }}>
+        <div style={{ position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 100, background: 'rgba(30,16,50,0.97)', border: '1px solid rgba(255,110,180,0.4)', borderRadius: 16, padding: '10px 20px', fontSize: 13, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', boxShadow: '0 0 30px rgba(255,110,180,0.3)' }}>
           {notification}
         </div>
       )}
 
-      {/* Header */}
-      <header className="relative z-10 px-4 pt-4 pb-2 flex items-center justify-between max-w-lg mx-auto">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl float-anim">{state.avatar}</span>
+      {/* ── TOP BAR ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 8px', maxWidth: 480, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 42, height: 42, borderRadius: 21, overflow: 'hidden', border: '2px solid rgba(255,110,180,0.4)' }}>
+            <img src={CHAR_IMG2} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          </div>
           <div>
-            <p className="font-black text-sm leading-tight gradient-text-pink">{state.username}</p>
-            <p className="text-xs text-white/40">Уровень {state.level}</p>
+            <div style={{ fontSize: 11, fontWeight: 900, color: '#fff' }}>{state.username}</div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 800, color: '#FF6EB4', background: 'rgba(255,110,180,0.12)', borderRadius: 8, padding: '2px 7px' }}>
+                🔥 СТАЯ
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 800, color: '#aaa', background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '2px 7px' }}>
+                💳
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 anime-card px-3 py-1.5">
-            <span className="text-sm">🪙</span>
-            <span className="text-sm font-black text-yellow-300">{state.coins.toLocaleString()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 900, color: '#4ade80' }}>
+            <span style={{ fontSize: 15 }}>💚</span> {state.gems}
           </div>
-          <div className="flex items-center gap-1 anime-card px-3 py-1.5">
-            <span className="text-sm">💎</span>
-            <span className="text-sm font-black text-cyan-300">{state.gems}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 900, color: '#FBBF24' }}>
+            <span style={{ fontSize: 15 }}>⭐</span> {state.stars}
           </div>
-        </div>
-      </header>
-
-      {/* XP bar */}
-      <div className="relative z-10 px-4 max-w-lg mx-auto mb-1">
-        <div className="flex justify-between text-[10px] text-white/30 mb-1 font-bold">
-          <span>XP: {state.xp}</span><span>{xpPct}% → Lv.{state.level + 1}</span>
-        </div>
-        <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-          <div className="progress-bar h-full" style={{ width: `${xpPct}%` }} />
         </div>
       </div>
 
-      {/* Content */}
-      <main className="relative z-10 px-4 pb-28 pt-3 max-w-lg mx-auto">
+      {/* ── CONTENT ── */}
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 0 88px' }}>
 
         {/* HOME */}
-        {tab === 'home' && (
-          <div className="space-y-4">
-            <div className="anime-card overflow-hidden relative slide-up" style={{ background: 'linear-gradient(135deg, rgba(255,110,180,0.1), rgba(155,89,212,0.1))' }}>
-              <div className="absolute top-0 right-0 w-36 h-36 opacity-20 rounded-full" style={{ background: 'radial-gradient(circle, #FF6EB4, transparent)' }} />
-              <div className="flex items-end gap-2 p-4">
-                <div className="flex-1">
-                  <p className="font-black text-2xl leading-tight">
-                    <span className="gradient-text-pink">Привет,</span><br />
-                    <span className="text-white">{state.username}!</span>
-                  </p>
-                  <p className="text-white/40 text-sm mt-1">Добро пожаловать в аниме-мир ✨</p>
-                  <div className="mt-3 flex gap-2">
-                    <div className="anime-card px-3 py-1.5 text-center">
-                      <p className="text-yellow-300 font-black text-base">⭐ Lv.{state.level}</p>
-                    </div>
-                    <div className="anime-card px-3 py-1.5 text-center">
-                      <p className="text-green-300 font-black text-base">🎁 {state.completedQuests.length} задан.</p>
-                    </div>
-                  </div>
-                </div>
-                <img src={HERO_IMG} alt="anime" className="w-28 h-32 object-cover rounded-2xl float-anim" style={{ objectPosition: 'top' }} />
-              </div>
-            </div>
+        {tab === 'home' && <HomeTab state={state} characters={CHARACTERS} charIdx={charIdx} setCharIdx={setCharIdx} onNotify={notify} touchStartX={touchStartX} />}
+        {tab === 'market' && <MarketTab items={MARKET_ITEMS} onBuy={buyItem} onNotify={notify} />}
+        {tab === 'gallery' && <GalleryTab items={GALLERY} likedItems={likedItems} onLike={likeGallery} toys={TOYS} state={state} onUnlock={unlockToy} />}
+        {tab === 'quests' && <QuestsTab quests={QUESTS} state={state} onComplete={completeQuest} />}
+        {tab === 'settings' && <SettingsTab state={state} onUpdate={updateSetting} onNotify={notify} />}
+      </div>
 
-            <div className="grid grid-cols-2 gap-3 slide-up slide-up-1">
-              <div className="anime-card p-4" style={{ background: 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,170,0,0.05))' }}>
-                <span className="text-3xl star-shine block mb-1">🎁</span>
-                <p className="font-black text-sm text-white">Ежедневный бонус</p>
-                <p className="text-white/40 text-xs mb-3">+50 монет каждый день</p>
-                <button className="btn-anime w-full py-2 text-xs">Забрать</button>
-              </div>
-              <div className="anime-card p-4" style={{ background: 'linear-gradient(135deg, rgba(0,229,255,0.08), rgba(0,255,204,0.05))' }}>
-                <span className="text-3xl block mb-1">📱</span>
-                <p className="font-black text-sm text-white">Telegram</p>
-                <p className="text-white/40 text-xs mb-3">Статистика для друзей</p>
-                <button className="btn-cyan w-full py-2 text-xs" onClick={() => notify('📱 Включи в Настройках!')}>Подключить</button>
-              </div>
-            </div>
-
-            <div className="anime-card p-4 slide-up slide-up-2">
-              <div className="flex items-center gap-2 mb-3">
-                <span>📊</span>
-                <p className="font-black text-sm text-white">Статистика</p>
-                <div className="ml-auto flex items-center gap-1">
-                  <span className="pulse-dot w-2 h-2 rounded-full bg-green-400 inline-block" />
-                  <span className="text-xs text-green-400 font-bold">В сети</span>
+      {/* ── BOTTOM NAV ── */}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: 480, margin: '0 auto', background: 'rgba(10,6,20,0.97)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '8px 4px 12px' }}>
+          {NAV.map(n => (
+            <button key={n.id} onClick={() => setTab(n.id)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', position: 'relative' }}>
+              {n.center ? (
+                <div style={{ width: 48, height: 48, borderRadius: 24, background: tab === n.id ? 'linear-gradient(135deg,#FF6EB4,#9B59D4)' : 'rgba(255,110,180,0.15)', border: '2px solid rgba(255,110,180,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginTop: -20, boxShadow: tab === n.id ? '0 0 20px rgba(255,110,180,0.5)' : 'none', transition: 'all 0.2s' }}>
+                  {n.icon}
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: 'Игрушек', val: `${state.unlockedToys.length}/6`, color: 'gradient-text-pink' },
-                  { label: 'Заданий', val: `${state.completedQuests.length}/6`, color: 'gradient-text-cyan' },
-                  { label: 'Монет', val: state.coins.toLocaleString(), color: 'text-yellow-300' },
-                  { label: 'Самоцветов', val: state.gems, color: 'text-cyan-300' },
-                ].map(s => (
-                  <div key={s.label} className="bg-white/5 rounded-xl p-3">
-                    <p className={`font-black text-base ${s.color}`}>{s.val}</p>
-                    <p className="text-white/40 text-xs">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+              ) : (
+                <span style={{ fontSize: 22 }}>{n.icon}</span>
+              )}
+              <span style={{ fontSize: 9, fontWeight: 900, color: tab === n.id ? '#FF6EB4' : 'rgba(255,255,255,0.35)', letterSpacing: 0.5, transition: 'color 0.2s' }}>{n.label}</span>
+              {tab === n.id && !n.center && <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: 4, height: 4, borderRadius: 2, background: '#FF6EB4' }} />}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {/* TG leaderboard teaser */}
-            <div className="anime-card p-3 slide-up slide-up-3 stripe-bg">
-              <p className="text-white/40 text-xs font-bold mb-2 uppercase tracking-wider">🏆 Топ игроков</p>
-              {['🌸 Sakura-chan', '⚡ NarutoBoy', '🔮 MagicGirl99'].map((u, i) => (
-                <div key={u} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
-                  <span className="text-sm font-bold text-white">{['🥇','🥈','🥉'][i]} {u}</span>
-                  <span className="text-xs text-white/40">{[2400, 1980, 1750][i]} очков</span>
-                </div>
-              ))}
+/* ─── HOME ─── */
+function HomeTab({ state, characters, charIdx, setCharIdx, onNotify, touchStartX }: {
+  state: GameState;
+  characters: typeof CHARACTERS;
+  charIdx: number;
+  setCharIdx: (i: number) => void;
+  onNotify: (m: string) => void;
+  touchStartX: React.MutableRefObject<number>;
+}) {
+  const char = characters[charIdx];
+  const timer = useTimer(75470);
+
+  const swipeLeft = () => setCharIdx(i => Math.min(i + 1, characters.length - 1));
+  const swipeRight = () => setCharIdx(i => Math.max(i - 1, 0));
+
+  return (
+    <div style={{ padding: '0 0' }}>
+      {/* Coins + gift */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 16px 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Side badges */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button onClick={() => onNotify('👑 Дакер Пасс — откроется скоро!')} style={{ background: 'rgba(255,170,0,0.12)', border: '1px solid rgba(255,170,0,0.25)', borderRadius: 12, padding: '6px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+              <span style={{ fontSize: 18 }}>👑</span>
+              <span style={{ fontSize: 8, fontWeight: 900, color: '#FBBF24', lineHeight: 1 }}>ДАКЕР</span>
+              <span style={{ fontSize: 8, fontWeight: 900, color: '#FBBF24', lineHeight: 1 }}>ПАСС</span>
+            </button>
+            <button onClick={() => onNotify('🏆 Турнир — скоро!')} style={{ background: 'rgba(255,170,0,0.12)', border: '1px solid rgba(255,170,0,0.25)', borderRadius: 12, padding: '6px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+              <span style={{ fontSize: 18 }}>🏆</span>
+              <span style={{ fontSize: 8, fontWeight: 900, color: '#FBBF24' }}>04:06:53</span>
+            </button>
+          </div>
+
+          {/* Main coin display */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 14, background: 'linear-gradient(135deg,#FF6EB4,#9B59D4)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🌸</div>
+              <span style={{ fontSize: 32, fontWeight: 900, color: '#FF6EB4', letterSpacing: -1 }}>{state.coins.toFixed(2)}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Gift button */}
+        <button onClick={() => onNotify('🎁 Бонус получен! +50 монет')} style={{ background: 'rgba(255,110,180,0.12)', border: '1px solid rgba(255,110,180,0.25)', borderRadius: 16, padding: '10px 14px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
+          <span style={{ fontSize: 24 }}>🎁</span>
+          <span style={{ fontSize: 9, fontWeight: 900, color: '#FF6EB4' }}>6 ДНЕЙ</span>
+        </button>
+      </div>
+
+      {/* Character card area */}
+      <div
+        style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}
+        onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+        onTouchEnd={e => {
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          if (dx > 50) swipeRight();
+          if (dx < -50) swipeLeft();
+        }}
+      >
+        {/* Prev character peek */}
+        {charIdx > 0 && (
+          <div onClick={swipeRight} style={{ position: 'absolute', left: 4, width: 50, height: 180, borderRadius: 16, overflow: 'hidden', opacity: 0.5, cursor: 'pointer', zIndex: 2 }}>
+            <img src={characters[charIdx - 1].img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', filter: 'blur(1px)' }} />
           </div>
         )}
 
-        {/* MARKET */}
-        {tab === 'market' && (
-          <div className="space-y-4">
-            <div className="slide-up flex items-end gap-3 mb-2">
-              <div>
-                <h2 className="font-black text-xl gradient-text-pink">Рынок</h2>
-                <p className="text-white/40 text-xs">Магические предметы и артефакты</p>
-              </div>
-              <img src={MARKET_IMG} alt="market" className="ml-auto w-20 h-14 object-cover rounded-xl opacity-70" />
+        {/* Main card */}
+        <div style={{ flex: 1, maxWidth: 280, position: 'relative' }}>
+          {/* Card frame */}
+          <div style={{ borderRadius: 24, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,110,180,0.1)' }}>
+            <div style={{ position: 'absolute', top: 10, left: 12, zIndex: 5, fontSize: 11, fontWeight: 900, color: 'rgba(255,255,255,0.6)' }}>LVL {char.level}</div>
+            <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 5, fontSize: 11, fontWeight: 900, color: RARITY_COLOR[char.rarity.toLowerCase()]?.text || '#fff', letterSpacing: 1 }}>{char.rarity}</div>
+
+            {/* Energy badge */}
+            <div style={{ position: 'absolute', top: 32, left: -8, zIndex: 6, background: 'linear-gradient(135deg,#e91e8c,#9b59d4)', borderRadius: 20, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 4px 12px rgba(233,30,140,0.5)' }}>
+              <span style={{ fontSize: 10 }}>🌸</span>
+              <span style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{char.energy}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {MARKET_ITEMS.map((item, i) => (
-                <div key={item.id} className="anime-card p-3 slide-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-3xl">{item.emoji}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RARITY[item.rarity]}`}>{item.rarity}</span>
-                  </div>
-                  <p className="font-black text-sm text-white">{item.name}</p>
-                  <p className="text-white/40 text-[11px] mb-3 leading-tight">{item.desc}</p>
-                  <button onClick={() => buyItem(item)} className={`w-full py-2 text-xs font-black rounded-xl transition-all ${item.gem ? 'btn-cyan' : 'btn-anime'}`}>
-                    {item.gem ? `💎 ${item.price}` : `🪙 ${item.price}`}
+
+            <img src={char.img} alt={char.name} style={{ width: '100%', aspectRatio: '3/4', objectFit: 'cover', objectPosition: 'top', display: 'block' }} />
+
+            {/* Name plate */}
+            <div style={{ background: 'rgba(255,255,255,0.95)', padding: '8px 12px 6px', textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 900, color: '#1a0835', letterSpacing: 0.5 }}>{char.name}</div>
+              <div style={{ fontSize: 10, color: '#888', fontWeight: 700, marginTop: 1 }}>{char.subname}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Next peek */}
+        {charIdx < characters.length - 1 && (
+          <div onClick={swipeLeft} style={{ position: 'absolute', right: 4, width: 50, height: 180, borderRadius: 16, overflow: 'hidden', opacity: 0.5, cursor: 'pointer', zIndex: 2 }}>
+            <img src={characters[charIdx + 1].img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', filter: 'blur(1px)' }} />
+          </div>
+        )}
+      </div>
+
+      {/* Hearts row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '12px 16px' }}>
+        <button onClick={() => onNotify('💨 Тип взаимодействия — скоро!')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, opacity: 0.5 }}>💨</button>
+        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.15)' }} />
+        {Array.from({ length: char.maxHearts }).map((_, i) => (
+          <span key={i} style={{ fontSize: 22, filter: i < char.hearts ? 'none' : 'grayscale(1) opacity(0.3)', cursor: 'pointer', transition: 'transform 0.15s' }}
+            onClick={() => onNotify(`💖 Сердечко ${i + 1}!`)}
+            onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.3)')}
+            onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')}
+          >
+            ❤️
+          </span>
+        ))}
+        <button onClick={() => onNotify('➕ Добавить взаимодействие — скоро!')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'rgba(255,255,255,0.4)' }}>＋</button>
+      </div>
+
+      {/* Timer box */}
+      <div style={{ margin: '0 16px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Разведение завершится через</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>ℹ️</span>
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 900, color: '#FF6EB4', marginTop: 4, letterSpacing: 2 }}>{timer}</div>
+        {/* hearts progress */}
+        <div style={{ display: 'flex', gap: 3, marginTop: 8, flexWrap: 'wrap' }}>
+          {Array.from({ length: 20 }).map((_, i) => (
+            <span key={i} style={{ fontSize: 13, filter: i < 14 ? 'none' : 'grayscale(1) opacity(0.25)' }}>❤️</span>
+          ))}
+        </div>
+      </div>
+
+      {/* Dots */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, paddingBottom: 4 }}>
+        {characters.map((_, i) => (
+          <div key={i} onClick={() => setCharIdx(i)} style={{ width: i === charIdx ? 20 : 6, height: 6, borderRadius: 3, background: i === charIdx ? '#FF6EB4' : 'rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'all 0.3s' }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── MARKET ─── */
+function MarketTab({ items, onBuy, onNotify }: { items: typeof MARKET_ITEMS; onBuy: (i: typeof MARKET_ITEMS[0]) => void; onNotify: (m: string) => void }) {
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 900, background: 'linear-gradient(135deg,#FF6EB4,#ff9cee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>Рынок</h2>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: 0 }}>Магические предметы</p>
+        </div>
+        <img src={MARKET_IMG} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 12, opacity: 0.7 }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {items.map(item => {
+          const rc = RARITY_COLOR[item.rarity];
+          return (
+            <div key={item.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${rc.border}`, borderRadius: 18, padding: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 32 }}>{item.emoji}</span>
+                <span style={{ fontSize: 9, fontWeight: 800, color: rc.text, background: rc.bg, border: `1px solid ${rc.border}`, borderRadius: 99, padding: '2px 8px' }}>{item.rarity}</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{item.name}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', lineHeight: 1.3 }}>{item.desc}</div>
+              <button onClick={() => onBuy(item)} style={{ marginTop: 4, padding: '8px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 900, fontSize: 13, background: item.gem ? 'linear-gradient(135deg,#00E5FF,#00FFCC)' : 'linear-gradient(135deg,#FF6EB4,#9B59D4)', color: item.gem ? '#0D0620' : '#fff' }}>
+                {item.gem ? `💎 ${item.price}` : `🌸 ${item.price}`}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── GALLERY + TOYS merged ─── */
+function GalleryTab({ items, likedItems, onLike, toys, state, onUnlock }: {
+  items: typeof GALLERY; likedItems: number[]; onLike: (id: number) => void;
+  toys: typeof TOYS; state: GameState; onUnlock: (t: typeof TOYS[0]) => void;
+}) {
+  const [subtab, setSubtab] = useState<'gallery' | 'toys'>('gallery');
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {(['gallery', 'toys'] as const).map(t => (
+          <button key={t} onClick={() => setSubtab(t)} style={{ flex: 1, padding: '8px', borderRadius: 14, border: 'none', cursor: 'pointer', fontWeight: 900, fontSize: 13, background: subtab === t ? 'linear-gradient(135deg,#FF6EB4,#9B59D4)' : 'rgba(255,255,255,0.06)', color: subtab === t ? '#fff' : 'rgba(255,255,255,0.4)' }}>
+            {t === 'gallery' ? '🖼️ Галерея' : '🧸 Игрушки'}
+          </button>
+        ))}
+      </div>
+
+      {subtab === 'gallery' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {items.map(item => (
+            <div key={item.id} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, overflow: 'hidden' }}>
+              <div style={{ height: 100, background: 'linear-gradient(135deg,rgba(255,110,180,0.1),rgba(155,89,212,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44 }}>{item.emoji}</div>
+              <div style={{ padding: '8px 10px' }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{item.likes + (likedItems.includes(item.id) ? 1 : 0)} лайков</span>
+                  <button onClick={() => onLike(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, transform: likedItems.includes(item.id) ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.15s' }}>
+                    {likedItems.includes(item.id) ? '💖' : '🤍'}
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TOYS */}
-        {tab === 'toys' && (
-          <div className="space-y-4">
-            <div className="slide-up flex items-end gap-3 mb-2">
-              <div>
-                <h2 className="font-black text-xl gradient-text-cyan">Игрушки</h2>
-                <p className="text-white/40 text-xs">Твоя коллекция существ</p>
               </div>
-              <img src={TOYS_IMG} alt="toys" className="ml-auto w-20 h-14 object-cover rounded-xl opacity-70" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {TOYS.map((toy, i) => {
-                const unlocked = state.unlockedToys.includes(toy.id);
-                const canUnlock = state.level >= toy.unlockLevel;
-                return (
-                  <div key={toy.id} className={`anime-card p-4 slide-up ${!unlocked ? 'opacity-60' : ''}`} style={{ animationDelay: `${i * 0.05}s`, borderColor: unlocked ? 'rgba(255,110,180,0.3)' : undefined }}>
-                    <div className="relative mb-2 text-center">
-                      <span className={`text-4xl block ${unlocked ? 'float-anim' : ''}`} style={!unlocked ? { filter: 'grayscale(1) brightness(0.4)' } : {}}>
-                        {toy.emoji}
-                      </span>
-                      {unlocked && <span className="absolute -top-1 right-0 text-sm">✅</span>}
-                    </div>
-                    <p className="font-black text-sm text-center text-white">{toy.name}</p>
-                    <p className="text-white/40 text-[11px] text-center mb-2 leading-tight">{toy.desc}</p>
-                    <div className={`text-center text-[10px] font-bold mb-2 ${RARITY[toy.rarity].split(' ')[0]}`}>{toy.rarity.toUpperCase()}</div>
-                    {!unlocked ? (
-                      <button onClick={() => unlockToy(toy)} disabled={!canUnlock} className={`w-full py-1.5 text-xs font-black rounded-xl transition-all ${canUnlock ? 'btn-anime' : 'bg-white/5 text-white/30 cursor-not-allowed rounded-xl'}`}>
-                        {canUnlock ? '🔓 Разблокировать' : `🔒 Lv.${toy.unlockLevel}`}
-                      </button>
-                    ) : (
-                      <div className="text-center text-xs font-bold gradient-text-pink">Разблокировано!</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-        {/* GALLERY */}
-        {tab === 'gallery' && (
-          <div className="space-y-4">
-            <div className="slide-up">
-              <h2 className="font-black text-xl gradient-text-pink mb-0.5">Галерея</h2>
-              <p className="text-white/40 text-xs">Аниме-артефакты сообщества</p>
+      {subtab === 'toys' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 900, background: 'linear-gradient(135deg,#00E5FF,#00FFCC)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>Игрушки</h2>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: 0 }}>{state.unlockedToys.length}/{toys.length} разблокировано</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {GALLERY.map((item, i) => (
-                <div key={item.id} className="anime-card overflow-hidden slide-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                  <div className="h-28 flex items-center justify-center text-5xl" style={{ background: 'linear-gradient(135deg, rgba(255,110,180,0.1), rgba(155,89,212,0.1))' }}>
-                    {item.emoji}
-                  </div>
-                  <div className="p-2.5">
-                    <p className="font-bold text-xs text-white truncate">{item.title}</p>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-white/40 text-[10px]">{item.likes + (likedItems.includes(item.id) ? 1 : 0)} лайков</span>
-                      <button onClick={() => likeGallery(item.id)} className={`text-sm transition-transform hover:scale-125 ${likedItems.includes(item.id) ? '' : 'opacity-30'}`}>
-                        {likedItems.includes(item.id) ? '💖' : '🤍'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="w-full btn-anime py-3 text-sm" onClick={() => notify('📸 Загрузка фото — скоро!')}>📸 Добавить в галерею</button>
+            <img src={TOYS_IMG} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 12, opacity: 0.7 }} />
           </div>
-        )}
-
-        {/* QUESTS */}
-        {tab === 'quests' && (
-          <div className="space-y-3">
-            <div className="slide-up">
-              <h2 className="font-black text-xl text-yellow-300 mb-0.5">Задания</h2>
-              <p className="text-white/40 text-xs">Выполняй и получай награды</p>
-            </div>
-            {QUESTS.map((q, i) => {
-              const done = state.completedQuests.includes(q.id);
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {toys.map(toy => {
+              const unlocked = state.unlockedToys.includes(toy.id);
+              const canUnlock = state.level >= toy.unlockLevel;
+              const rc = RARITY_COLOR[toy.rarity];
               return (
-                <div key={q.id} className={`anime-card p-4 slide-up flex items-center gap-3 ${done ? 'opacity-50' : ''}`} style={{ animationDelay: `${i * 0.05}s`, borderColor: done ? 'rgba(255,215,0,0.2)' : undefined }}>
-                  <span className="text-3xl">{q.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-sm text-white">{q.name}</p>
-                    <p className="text-white/40 text-[11px] leading-tight">{q.desc}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-yellow-300 text-[11px] font-bold">🪙 {q.reward}</span>
-                      <span className="text-cyan-300 text-[11px] font-bold">✨ +{q.xp} XP</span>
-                    </div>
-                  </div>
-                  {done ? <div className="text-xl">✅</div> : (
-                    <button onClick={() => completeQuest(q)} className="btn-anime px-3 py-2 text-xs shrink-0">Взять</button>
+                <div key={toy.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${rc.border}`, borderRadius: 18, padding: 14, opacity: unlocked ? 1 : 0.65, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 40, filter: unlocked ? 'none' : 'grayscale(1) brightness(0.4)', display: 'block' }}>{toy.emoji}</span>
+                  <div style={{ fontSize: 12, fontWeight: 900, color: '#fff', textAlign: 'center' }}>{toy.name}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', textAlign: 'center', lineHeight: 1.3 }}>{toy.desc}</div>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: rc.text, letterSpacing: 0.5 }}>{toy.rarity.toUpperCase()}</div>
+                  {!unlocked ? (
+                    <button onClick={() => onUnlock(toy)} disabled={!canUnlock} style={{ width: '100%', padding: '7px', borderRadius: 11, border: 'none', cursor: canUnlock ? 'pointer' : 'not-allowed', fontWeight: 900, fontSize: 11, background: canUnlock ? 'linear-gradient(135deg,#FF6EB4,#9B59D4)' : 'rgba(255,255,255,0.06)', color: canUnlock ? '#fff' : 'rgba(255,255,255,0.3)' }}>
+                      {canUnlock ? '🔓 Разблокировать' : `🔒 Lv.${toy.unlockLevel}`}
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: 11, fontWeight: 900, background: 'linear-gradient(135deg,#FF6EB4,#ff9cee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>✅ Разблокировано!</div>
                   )}
                 </div>
               );
             })}
           </div>
-        )}
-
-        {/* SETTINGS */}
-        {tab === 'settings' && (
-          <div className="space-y-4">
-            <div className="slide-up">
-              <h2 className="font-black text-xl gradient-text-pink mb-0.5">Настройки</h2>
-              <p className="text-white/40 text-xs">Персонализируй свой мир</p>
-            </div>
-
-            <div className="anime-card p-4 slide-up slide-up-1">
-              <div className="flex items-center gap-3">
-                <span className="text-4xl">{state.avatar}</span>
-                <div>
-                  <p className="font-black text-white">{state.username}</p>
-                  <p className="text-white/40 text-xs">Уровень {state.level} · {state.xp}/{state.xpMax} XP</p>
-                </div>
-                <button className="ml-auto btn-anime px-3 py-1.5 text-xs" onClick={() => notify('✏️ Редактирование — скоро!')}>Изменить</button>
-              </div>
-            </div>
-
-            <div className="anime-card p-1 slide-up slide-up-2 overflow-hidden">
-              {([
-                { key: 'notifications' as const, label: 'Уведомления', emoji: '🔔', desc: 'Push-уведомления о событиях' },
-                { key: 'sound' as const, label: 'Звуки', emoji: '🔊', desc: 'Звуковые эффекты в игре' },
-                { key: 'music' as const, label: 'Музыка', emoji: '🎵', desc: 'Фоновая аниме-музыка' },
-                { key: 'tgSync' as const, label: 'Telegram синхронизация', emoji: '📱', desc: 'Статистика видна друзьям в группе' },
-              ]).map((t, i, arr) => (
-                <div key={t.key} className={`flex items-center gap-3 px-4 py-3 ${i < arr.length - 1 ? 'border-b border-white/5' : ''}`}>
-                  <span className="text-xl">{t.emoji}</span>
-                  <div className="flex-1">
-                    <p className="font-bold text-sm text-white">{t.label}</p>
-                    <p className="text-white/30 text-[11px]">{t.desc}</p>
-                  </div>
-                  <button
-                    onClick={() => updateSetting(t.key, !state.settings[t.key])}
-                    className={`w-12 h-6 rounded-full transition-all relative ${state.settings[t.key] ? 'bg-gradient-to-r from-pink-500 to-purple-500' : 'bg-white/10'}`}
-                  >
-                    <span className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-md ${state.settings[t.key] ? 'left-6' : 'left-0.5'}`} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {state.settings.tgSync && (
-              <div className="anime-card p-4 slide-up" style={{ border: '1px solid rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.06)' }}>
-                <p className="font-black text-sm text-cyan-300 mb-1">📱 Telegram подключён</p>
-                <p className="text-white/40 text-xs">Твоя статистика видна всем пользователям в группе</p>
-              </div>
-            )}
-
-            <div className="anime-card p-4 slide-up slide-up-3" style={{ border: '1px solid rgba(239,68,68,0.2)' }}>
-              <p className="font-black text-sm text-red-400 mb-2">⚠️ Опасная зона</p>
-              <button onClick={() => notify('🔒 Сброс требует подтверждения — скоро!')} className="w-full py-2.5 text-xs font-black rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all">
-                Сбросить прогресс
-              </button>
-            </div>
-
-            <div className="text-center text-white/20 text-xs pt-2" style={{ fontFamily: 'Caveat, cursive', fontSize: '16px' }}>
-              Anime World v1.0 ✨ Made with love
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-20 px-2 pb-3 pt-2">
-        <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-2 rounded-2xl" style={{ background: 'rgba(13,6,32,0.92)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,110,180,0.2)' }}>
-          {NAV.map(n => (
-            <button key={n.id} onClick={() => setTab(n.id)} className={`nav-item flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${tab === n.id ? 'active' : 'opacity-40 hover:opacity-70'}`}>
-              <span className="text-xl">{n.emoji}</span>
-              <span className={`text-[9px] font-black ${tab === n.id ? 'gradient-text-pink' : 'text-white'}`}>{n.label}</span>
-            </button>
-          ))}
         </div>
-      </nav>
+      )}
+    </div>
+  );
+}
+
+/* ─── QUESTS ─── */
+function QuestsTab({ quests, state, onComplete }: { quests: typeof QUESTS; state: GameState; onComplete: (q: typeof QUESTS[0]) => void }) {
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <h2 style={{ fontSize: 22, fontWeight: 900, color: '#FBBF24', margin: '0 0 4px' }}>Задания</h2>
+      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', margin: '0 0 16px' }}>Выполняй и получай награды</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {quests.map(q => {
+          const done = state.completedQuests.includes(q.id);
+          return (
+            <div key={q.id} style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${done ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.08)'}`, borderRadius: 18, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, opacity: done ? 0.55 : 1 }}>
+              <span style={{ fontSize: 32 }}>{q.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 900, color: '#fff' }}>{q.name}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{q.desc}</div>
+                <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#FBBF24' }}>🌸 {q.reward}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#67E8F9' }}>✨ +{q.xp} XP</span>
+                </div>
+              </div>
+              {done ? <span style={{ fontSize: 22 }}>✅</span> : (
+                <button onClick={() => onComplete(q)} style={{ padding: '8px 14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 900, fontSize: 12, background: 'linear-gradient(135deg,#FF6EB4,#9B59D4)', color: '#fff' }}>
+                  Взять
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── SETTINGS ─── */
+function SettingsTab({ state, onUpdate, onNotify }: { state: GameState; onUpdate: (k: keyof GameState['settings'], v: boolean) => void; onNotify: (m: string) => void }) {
+  const toggles = [
+    { key: 'notifications' as const, label: 'Уведомления', emoji: '🔔', desc: 'Push-уведомления о событиях' },
+    { key: 'sound' as const, label: 'Звуки', emoji: '🔊', desc: 'Звуковые эффекты' },
+    { key: 'music' as const, label: 'Музыка', emoji: '🎵', desc: 'Фоновая аниме-музыка' },
+    { key: 'tgSync' as const, label: 'Telegram синхронизация', emoji: '📱', desc: 'Статистика видна в ТГ группе' },
+  ];
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      <h2 style={{ fontSize: 22, fontWeight: 900, background: 'linear-gradient(135deg,#FF6EB4,#ff9cee)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: '0 0 16px' }}>Настройки</h2>
+
+      {/* Profile */}
+      <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,110,180,0.15)', borderRadius: 18, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <div style={{ width: 48, height: 48, borderRadius: 24, overflow: 'hidden', border: '2px solid rgba(255,110,180,0.4)' }}>
+          <img src={CHAR_IMG2} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 900, color: '#fff' }}>{state.username}</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Уровень {state.level} · {state.xp}/{state.xpMax} XP</div>
+        </div>
+        <button onClick={() => onNotify('✏️ Редактирование — скоро!')} style={{ marginLeft: 'auto', padding: '7px 14px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 900, fontSize: 12, background: 'linear-gradient(135deg,#FF6EB4,#9B59D4)', color: '#fff' }}>Изменить</button>
+      </div>
+
+      {/* Toggles */}
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden', marginBottom: 12 }}>
+        {toggles.map((t, i) => (
+          <div key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < toggles.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+            <span style={{ fontSize: 20 }}>{t.emoji}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>{t.label}</div>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{t.desc}</div>
+            </div>
+            <button
+              onClick={() => onUpdate(t.key, !state.settings[t.key])}
+              style={{ width: 46, height: 26, borderRadius: 13, border: 'none', cursor: 'pointer', position: 'relative', background: state.settings[t.key] ? 'linear-gradient(135deg,#FF6EB4,#9B59D4)' : 'rgba(255,255,255,0.1)', transition: 'background 0.3s' }}
+            >
+              <span style={{ position: 'absolute', width: 20, height: 20, borderRadius: 10, background: '#fff', top: 3, left: state.settings[t.key] ? 23 : 3, transition: 'left 0.25s', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {state.settings.tgSync && (
+        <div style={{ background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.25)', borderRadius: 16, padding: '12px 16px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 900, color: '#67E8F9', marginBottom: 2 }}>📱 Telegram подключён</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>Статистика видна всем в группе</div>
+        </div>
+      )}
+
+      <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ fontSize: 13, fontWeight: 900, color: '#F87171', marginBottom: 8 }}>⚠️ Опасная зона</div>
+        <button onClick={() => onNotify('🔒 Сброс — скоро!')} style={{ width: '100%', padding: '10px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', background: 'none', cursor: 'pointer', fontWeight: 900, fontSize: 12, color: '#F87171' }}>
+          Сбросить прогресс
+        </button>
+      </div>
+
+      <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.15)', fontSize: 16, fontFamily: 'Caveat, cursive', marginTop: 16 }}>Anime World v1.0 ✨</div>
     </div>
   );
 }
